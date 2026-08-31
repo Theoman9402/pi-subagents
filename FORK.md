@@ -2,14 +2,16 @@
 
 This fork tracks **upstream [`tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)**, the pi extension that adds sub-agents and workflow orchestration to [pi](https://github.com/earendil-works/pi-coding-agent). It is maintained locally at `~/.pi/agent/extensions/pi-subagents/` and used as the pi-subagents instance for this machine's pi setup.
 
-**Motivation.** Upstream is a moving target. We run pi on Windows with a specific set of extensions and a specific way of using sub-agents; upstream evolves independently. Forking lets us:
+## Motivation
+
+Upstream is a moving target. We run pi on Windows with a specific set of extensions and a specific way of using sub-agents; upstream evolves independently. Forking lets us:
 - **Ship fixes to our own install immediately**, without waiting for an upstream release - e.g. the `(Tools: …)` suffix bug below.
 - **Keep our install stable** while upstream churns. We pin to a known-good point and apply only what we need.
 - **Contribute back cleanly.** The fork is a staging area: a fix proven here can be PR'd upstream without local hacks leaking into the diff.
 
-**How to stay current.** `git fetch upstream && git merge upstream/master` (or rebase). The fork diverges from upstream only where we deliberately changed something; everything else tracks.
+## How to stay current
 
----
+`git fetch upstream && git merge upstream/master` (or rebase). The fork diverges from upstream only where we deliberately changed something; everything else tracks.
 
 ## What we changed (the fork delta)
 
@@ -21,7 +23,9 @@ The fork's `master` is upstream plus a small, deliberate delta. The delta below 
 | `test/tool-description-mode.test.ts` | New tests lock the suffix behavior |
 | `README.md`, `CHANGELOG.md` | Documentation of the above |
 
-**The fix in detail.** `formatToolsSuffix` (in `src/index.ts`) renders an agent's tool scope for the `(Tools: …)` suffix. Before: it read only `cfg.builtinToolNames`, so `ext:` selectors never appeared. After: it appends the declared `extSelectors` (already parsed and stored on the agent config) flat after the built-in list. An agent with `tools: read, edit, write, ext:rpiv-web-tools/web_search, ext:rpiv-web-tools/web_fetch` was advertised as `(Tools: read, edit, write)` - silently omitting the extension tools it could actually call, so the orchestrator would route search/fetch work elsewhere. Now it renders the full list, and `tools: "*, ext:mcp/search"` renders `(Tools: *, ext:mcp/search)` (was `*`).
+### The fix in detail
+
+`formatToolsSuffix` (in `src/index.ts`) renders an agent's tool scope for the `(Tools: …)` suffix. Before: it read only `cfg.builtinToolNames`, so `ext:` selectors never appeared. After: it appends the declared `extSelectors` (already parsed and stored on the agent config) flat after the built-in list. An agent with `tools: read, edit, write, ext:rpiv-web-tools/web_search, ext:rpiv-web-tools/web_fetch` was advertised as `(Tools: read, edit, write)` - silently omitting the extension tools it could actually call, so the orchestrator would route search/fetch work elsewhere. Now it renders the full list, and `tools: "*, ext:mcp/search"` renders `(Tools: *, ext:mcp/search)` (was `*`).
 
 Selectors are a **declared-intent** claim: exact for eagerly-registered extensions, a routing hint for lazily-registered ones (MCP servers, context-mode) whose tools resolve only after the description is built. `tools: none` with `isolated` or `extensions: false` still renders `(Tools: none)` - those agents genuinely can call nothing.
 
