@@ -386,16 +386,18 @@ A few rules the examples don't make obvious:
 - `exclude_extensions:` is **not a sandbox**: excluded extensions' factory code still executes once during loading. Exclusion suppresses their tools and their bound lifecycle hooks (`pi.on` handlers like `session_start` only fire for extensions bound to the session), but not other load-time side effects — a factory that subscribes directly to the shared `pi.events` bus stays live. Don't rely on it to contain an untrusted extension.
 - Array and string forms are equivalent: `[a, b]` == `"a, b"`.
 
-**How an agent's scope is advertised.** The Agent tool description lists every available agent with a `(Tools: …)` suffix, and that suffix is what the orchestrator reads when deciding where to route work. It describes **built-in scope only** — extension tools are resolved when the agent runs (extensions may register lazily, see above), so they can't be enumerated when the description is built:
+**How an agent's scope is advertised.** The Agent tool description lists every available agent with a `(Tools: …)` suffix, and that suffix is what the orchestrator reads when deciding where to route work. It lists the agent's **declared built-in scope plus any declared `ext:` selectors**. Extension tools are resolved when the agent runs (extensions may register lazily, see above), so the selectors are the *declared-intent* claim the orchestrator routes on - exact for eagerly-registered extensions, a routing hint for lazily-registered ones:
 
 | `tools:` | suffix |
 |---|---|
 | omitted, `*`, or `all` | `*` |
 | a list of built-ins | that list, e.g. `read, grep` |
 | `none` with `isolated: true` or `extensions: false` | `none` |
-| `none`, or only `ext:` entries, with extensions loading | `no built-ins, extension tools only` |
+| `none`, or only `ext:` entries, with extensions loading | the declared selectors, e.g. `ext:foo, ext:bar`; `no built-ins, extension tools only` when none are declared |
+| built-ins plus `ext:` entries | both, flat, e.g. `read, grep, ext:foo` |
+| `*`/`all` plus `ext:` entries | `*, ext:foo` |
 
-The last two rows are separate because zero built-ins is not zero tools: `tools: none` alongside `extensions:` still surfaces every extension tool, so calling it `none` would understate what the agent can do. Note `*` doesn't enumerate extension tools either — an agent with `tools: "*, ext:mcp/search"` advertises `*`.
+The last two rows are separate because zero built-ins is not zero tools: `tools: none` alongside `extensions:` still surfaces every extension tool, so calling it `none` would understate what the agent can do. `*` does not enumerate extension tools either - an agent with `tools: "*, ext:mcp/search"` advertises `*, ext:mcp/search`, which states the declared selector without claiming the tool has resolved.
 
 ## Tools
 

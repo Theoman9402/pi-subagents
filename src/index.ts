@@ -254,10 +254,13 @@ function buildNotificationDetails(record: AgentRecord, resultMaxLen: number, act
 /**
  * Format an agent's tool scope for the Agent tool description.
  *
- * This suffix describes BUILT-IN scope only — extension tools are resolved when
- * the agent runs (extensions can register asynchronously), so they cannot be
- * enumerated while the description is being built. That is why an agent with
- * `tools: "*, ext:mcp/search"` renders "*" and always has.
+ * The suffix lists the agent's declared built-in scope plus any declared `ext:`
+ * selectors. Extension tools cannot be enumerated while the description is
+ * being built (extensions register asynchronously, some only at `session_start`
+ * or `before_agent_start`), so the selectors are the declared-intent claim the
+ * orchestrator routes on - exact for eagerly-registered extensions, a routing
+ * hint for lazily-registered ones. That is why an agent with
+ * `tools: "*, ext:mcp/search"` renders "*, ext:mcp/search" and not "*".
  *
  * Two distinctions matter, both of them capability claims the orchestrator acts on:
  *
@@ -268,24 +271,29 @@ function buildNotificationDetails(record: AgentRecord, resultMaxLen: number, act
  * - empty-with-extensions vs empty-without. Zero built-ins does NOT imply zero
  *   tools: `tools: none` alongside `extensions:` still surfaces every extension
  *   tool (see test/fixtures/.pi/agents/tools-none.md, which expects three). Calling
- *   that "none" understates the agent instead of overstating it — better, but still
+ *   that "none" understates the agent instead of overstating it - better, but still
  *   wrong, and it would route work away from the only agent able to do it. "none"
  *   is therefore reserved for agents that genuinely can call nothing: `isolated`
  *   agents and those with `extensions: false`.
  */
 export function formatToolsSuffix(cfg: AgentConfig | undefined): string {
   const tools = cfg?.builtinToolNames;
+  const extSelectors = cfg?.extSelectors;
   if (!tools) return "*";
   if (tools.length === 0) {
     // `isolated` overrides extensions to false in the runner, so both mean the
-    // agent has no extension tools either — and then it truly has nothing.
+    // agent has no extension tools either - and then it truly has nothing.
+    // Declared selectors are dropped to match, so a sealed agent never
+    // advertises tools it can never call.
     const noExtensionTools = cfg?.isolated === true || cfg?.extensions === false;
-    return noExtensionTools ? "none" : "no built-ins, extension tools only";
+    if (noExtensionTools) return "none";
+    return extSelectors?.length ? extSelectors.join(", ") : "no built-ins, extension tools only";
   }
   const isFullSet =
     tools.length === BUILTIN_TOOL_NAMES.length
     && BUILTIN_TOOL_NAMES.every((t) => tools.includes(t));
-  return isFullSet ? "*" : tools.join(", ");
+  const builtins = isFullSet ? "*" : tools.join(", ");
+  return extSelectors?.length ? `${builtins}, ${extSelectors.join(", ")}` : builtins;
 }
 
 /** CLI flag that runs a workflow script at session start. */

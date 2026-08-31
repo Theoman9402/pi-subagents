@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The `(Tools: …)` suffix on the Agent tool description now lists declared `ext:` selectors, not just built-ins.** Previously an agent whose `tools:` named extension tools (e.g. `read, edit, write, ext:rpiv-web-tools/web_search, ext:rpiv-web-tools/web_fetch`) was advertised as `(Tools: read, edit, write)` - silently omitting the extension tools the orchestrator could route work to. The suffix now renders the declared selectors flat alongside built-ins (`read, edit, write, ext:rpiv-web-tools/web_search, ext:rpiv-web-tools/web_fetch`), and `tools: "*, ext:mcp/search"` renders `*, ext:mcp/search` instead of `*`. Selectors are a *declared-intent* claim: exact for eagerly-registered extensions, a routing hint for lazily-registered ones (MCP servers, context-mode), since the description is built before those resolve. `tools: none` with `isolated`/`extensions: false` still renders `none`.
+
 ## [0.19.0] - 2026-08-25
 
 > **⚠️ Breaking — this release requires pi 0.84.0 or newer** (`peerDependencies` moves from `>=0.81.0`). `SubagentWorkflow` needs two host APIs that do not exist below it, and both fail the typecheck rather than degrading quietly — see the `Changed` entry below for which, and why neither was worth reimplementing to hold the old floor. npm flags an older pi at install time.

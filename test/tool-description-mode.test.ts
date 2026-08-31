@@ -383,11 +383,55 @@ describe("toolDescriptionMode", () => {
       expect(desc).not.toContain("- probe: probe agent. (Tools: none)");
     });
 
-    it("an ext:-only `tools:` is described by what it actually has", () => {
+    it("an ext:-only `tools:` is described by the selectors it declares", () => {
       const tools = withAgent("extonly", 'tools: "ext:probe.mjs"');
       const desc: string = tools.get("Agent").description;
-      expect(desc).toContain("- extonly: extonly agent. (Tools: no built-ins, extension tools only)");
+      expect(desc).toContain("- extonly: extonly agent. (Tools: ext:probe.mjs)");
       expect(desc).not.toContain("- extonly: extonly agent. (Tools: *)");
+      expect(desc).not.toContain("- extonly: extonly agent. (Tools: no built-ins, extension tools only)");
+    });
+
+    it("narrowed built-ins plus `ext:` selectors lists both, flat", () => {
+      const tools = withAgent(
+        "researcher",
+        'tools: read, edit, write, ext:alpha/web_search, ext:alpha/web_fetch',
+      );
+      const desc: string = tools.get("Agent").description;
+      expect(desc).toContain(
+        "- researcher: researcher agent. (Tools: read, edit, write, ext:alpha/web_search, ext:alpha/web_fetch)",
+      );
+    });
+
+    it("wildcard built-ins plus `ext:` selectors renders `*` with the selectors", () => {
+      const tools = withAgent("wide", 'tools: "*, ext:beta"');
+      const desc: string = tools.get("Agent").description;
+      expect(desc).toContain("- wide: wide agent. (Tools: *, ext:beta)");
+    });
+
+    it("`tools: none` with extensions loading still lists declared selectors", () => {
+      // Zero built-ins is not zero tools, and a selector names the tools.
+      const tools = withAgent("select", 'tools: "ext:gamma"\nextensions: "./ext-alpha.mjs"');
+      const desc: string = tools.get("Agent").description;
+      expect(desc).toContain("- select: select agent. (Tools: ext:gamma)");
+      expect(desc).not.toContain("- select: select agent. (Tools: none)");
+    });
+
+    it("`tools: none` with `ext:` selectors but no extensions loading still renders `none`", () => {
+      // `extensions: false` means the agent can call nothing, regardless of
+      // declared selectors - matching the runner, which drops selectors.
+      const tools = withAgent("sealed", 'tools: "ext:delta"\nextensions: false');
+      const desc: string = tools.get("Agent").description;
+      expect(desc).toContain("- sealed: sealed agent. (Tools: none)");
+    });
+
+    it("compact mode lists `ext:` selectors too, in lockstep with full mode", () => {
+      const tools = withAgent(
+        "compactext",
+        'tools: read, ext:epsilon',
+        { toolDescriptionMode: "compact" },
+      );
+      const desc: string = tools.get("Agent").description;
+      expect(desc).toContain("- compactext: compactext agent. (Tools: read, ext:epsilon)");
     });
 
     it("compact mode shares the suffix builder and must not diverge", () => {
